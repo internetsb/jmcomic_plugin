@@ -28,7 +28,7 @@
         "type": "command",
         "name": "jm",
         "description": "下载漫画指令"
-      },
+      }
     ],
     "features": [
       "下载指定漫画",
