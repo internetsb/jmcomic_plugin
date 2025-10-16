@@ -66,7 +66,7 @@ JMComic（禁漫天堂）插件v1.0.0，定时或随机获取漫画，在QQ随�
 
 > [!IMPORTANT]
 >
-> **Docker部署使用方法**
+> **Docker部署使用方法（暂不可用）**
 >
 > 将Napcat设置的HTTP Server的Host栏改为0.0.0.0，插件的config.toml中的http_host栏改为"napcat"（注意引号）。
 >
@@ -107,3 +107,4 @@ JMComic（禁漫天堂）插件v1.0.0，定时或随机获取漫画，在QQ随�
 [MaiBot](https://github.com/MaiM-with-u/MaiBot)
 
 原仓库：[JMComic-Crawler-Python](https://github.com/hect0x7/JMComic-Crawler-Python)
+
