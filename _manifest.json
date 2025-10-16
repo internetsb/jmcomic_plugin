@@ -1,0 +1,40 @@
+{
+  "manifest_version": 1,
+  "name": "jmcomic插件 - 简单漫画下载",
+  "version": "1.0.0",
+  "description": "jmcomic插件，定时或随机获取漫画，随时观看和分享喜欢的漫画",
+  "author": {
+    "name": "internetsb",
+    "url": "https://github.com/internetsb"
+  },
+  "license": "MIT",
+  
+  "host_application": {
+    "min_version": "0.8.0"
+  },
+  "homepage_url": "https://github.com/internetsb/jmcomic_plugin",
+  "repository_url": "https://github.com/internetsb/jmcomic_plugin",
+  "keywords": ["jm", "jmcomic", "漫画", "推荐", "下载"],
+  "categories": ["Utility Tools", "External Integration"],
+  
+  "default_locale": "zh-CN",
+  "locales_path": "_locales",
+  
+  "plugin_info": {
+    "is_built_in": false,
+    "plugin_type": "example",
+    "components": [
+      {
+        "type": "command",
+        "name": "jm",
+        "description": "下载漫画指令"
+      },
+    ],
+    "features": [
+      "下载指定漫画",
+      "随机推荐漫画",
+      "定时推送漫画",
+      "权限管理"
+    ]
+  }
+}
