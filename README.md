@@ -58,9 +58,9 @@ JMComic（禁漫天堂）插件v1.0.0，定时或随机获取漫画，在QQ随�
 
 ### 设置Napcat http服务器端口以发送文件
 
-![](.github/napcat1.png)
+![](images/napcat1.png)
 
-![](.github/napcat2.png)
+![](images/napcat2.png)
 
 
 
@@ -72,15 +72,15 @@ JMComic（禁漫天堂）插件v1.0.0，定时或随机获取漫画，在QQ随�
 >
 > **NapCat设置**
 >
-> ![](D:/IE/QQbot/MaiBot/plugins/Maizone/images/done_docker_napcat.png)
+> ![](images/docker_napcat.png)
 >
 > **插件config设置**
 >
-> ![](.github/docker_config.png)
+> ![](images/docker_config.png)
 >
 > **正常监听后的日志显示**
 >
-> ![](.github/docker_log.png)
+> ![](images/docker_log.png)
 
 ### 修改配置文件
 
