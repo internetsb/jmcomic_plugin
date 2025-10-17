@@ -202,6 +202,11 @@ async def download_and_process_comic(comic_input, tag: str = None) -> Tuple[bool
             if tag:
                 page: JmCategoryPage = client.search_tag(tag, page=1)
                 aid_list = list(page.iter_id())
+                page: JmCategoryPage = client.search_tag(tag, page=2)
+                aid_list += list(page.iter_id())
+                page: JmCategoryPage = client.search_tag(tag, page=3)
+                aid_list += list(page.iter_id())
+                logger.debug(f"根据标签 '{tag}' 搜索到的最新漫画ID列表: {aid_list}")
             else:
                 page: JmCategoryPage = client.categories_filter(
                     page=random.randint(1, 3),
