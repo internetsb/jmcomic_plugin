@@ -5,6 +5,8 @@
 > 该插件可能包含成人内容，通过访问本项目，您**郑重声明并保证**您已年满【18】周岁（或您所在司法管辖区的法定成年年龄），并且您所在社区的法律允许您访问此类成人内容。
 >
 > 禁止使用该插件**传播成人内容至禁止此类内容的公共平台**，您对访问及使用本项目造成的不良后果承担全部责任
+>
+> <img src="images/warning.jpg" style="zoom:50%;" />
 
 # JMComic（禁漫天堂） 插件
 
@@ -58,29 +60,37 @@ JMComic（禁漫天堂）插件v0.1.0，定时或随机获取漫画，在QQ随�
 
 ### 设置Napcat http服务器端口以发送文件
 
-![](images/napcat1.png)
+<img src="images/napcat1.png" style="zoom:50%;" />
 
-![](images/napcat2.png)
+<img src="images/napcat2.png" style="zoom:50%;" />
 
 
 
 > [!IMPORTANT]
 >
-> **Docker部署使用方法（暂不可用）**
+> **Docker部署使用方法**
 >
-> 将Napcat设置的HTTP Server的Host栏改为0.0.0.0，插件的config.toml中的http_host栏改为"napcat"（注意引号）。
+> 将Napcat设置的HTTP Server的Host栏改为0.0.0.0，插件的config.toml中的http_host栏改为"napcat"（注意引号）。修改docker-compose.yml以共享传输文件
 >
 > **NapCat设置**
 >
-> ![](images/docker_napcat.png)
+> <img src="images/docker_napcat.png" style="zoom:50%;" />
 >
 > **插件config设置**
 >
-> ![](images/docker_config.png)
+> <img src="images/docker_config.png" style="zoom:50%;" />
 >
 > **正常监听后的日志显示**
 >
 > ![](images/docker_log.png)
+>
+> **修改docker-compose.yml中的napcat volumes**
+>
+> 添加
+>
+> `- ./data/MaiMBot/plugins/jmcomic_plugin:/MaiMBot/plugins/jmcomic_plugin # 添加插件目录`
+>
+> ![](images/docker_volumes.png)
 
 ### 修改配置文件
 
@@ -107,5 +117,3 @@ JMComic（禁漫天堂）插件v0.1.0，定时或随机获取漫画，在QQ随�
 [MaiBot](https://github.com/MaiM-with-u/MaiBot)
 
 原仓库：[JMComic-Crawler-Python](https://github.com/hect0x7/JMComic-Crawler-Python)
-
-
