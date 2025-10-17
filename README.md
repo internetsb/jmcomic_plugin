@@ -12,7 +12,7 @@
 
 ## 概述
 
-JMComic（禁漫天堂）插件v1.0.0，定时或随机获取漫画，在QQ随时观看和分享喜欢的漫画
+JMComic（禁漫天堂）插件v0.1.0，定时或随机获取漫画，在QQ随时观看和分享喜欢的漫画
 
 ## 功能
 
@@ -107,4 +107,5 @@ JMComic（禁漫天堂）插件v1.0.0，定时或随机获取漫画，在QQ随�
 [MaiBot](https://github.com/MaiM-with-u/MaiBot)
 
 原仓库：[JMComic-Crawler-Python](https://github.com/hect0x7/JMComic-Crawler-Python)
+
 
