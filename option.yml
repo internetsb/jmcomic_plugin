@@ -37,7 +37,7 @@ download:
 # image: 同时下载的图片数，默认是30张图，禁漫网页一次最多请求50张图
     photo: 32
 # photo: 同时下载的章节数，不配置默认是cpu的线程数。例如8核16线程的cpu → 16.
-log: false
+log: true
 # log：jmcomic模块的日志输出
 plugins:
    # after_init:

@@ -6,7 +6,7 @@
 >
 > 禁止使用该插件**传播成人内容至禁止此类内容的公共平台**，您对访问及使用本项目造成的不良后果承担全部责任
 >
-> <img src="images/warning.jpg" style="zoom:50%;" />
+> <img src="images/warning.jpg" style="zoom:50%;"  alt="这种东西小范围享受就可以了"/>
 
 # JMComic（禁漫天堂） 插件
 
@@ -14,7 +14,7 @@
 
 ## 概述
 
-JMComic（禁漫天堂）插件v0.1.1，定时或随机获取漫画，在QQ随时观看和分享喜欢的漫画
+JMComic（禁漫天堂）插件v0.2.0，定时或随机获取漫画，在QQ随时观看和分享喜欢的漫画
 
 ## 功能
 
@@ -58,31 +58,13 @@ JMComic（禁漫天堂）插件v0.1.1，定时或随机获取漫画，在QQ随�
 
 4. 启动一次麦麦自动生成`config.toml`配置文件，成功生成配置文件即说明读取插件成功（未生成配置文件请检查启动麦麦时的加载插件日志）
 
-### 设置Napcat http服务器端口以发送文件
-
-<img src="images/napcat1.png" style="zoom:50%;" />
-
-<img src="images/napcat2.png" style="zoom:50%;" />
-
 
 
 > [!IMPORTANT]
 >
 > **Docker部署使用方法**
 >
-> 将Napcat设置的HTTP Server的Host栏改为0.0.0.0，插件的config.toml中的http_host栏改为"napcat"（注意引号）。修改docker-compose.yml以共享传输文件
->
-> **NapCat设置**
->
-> <img src="images/docker_napcat.png" style="zoom:50%;" />
->
-> **插件config设置**
->
-> <img src="images/docker_config.png" style="zoom:50%;" />
->
-> **正常监听后的日志显示**
->
-> ![](images/docker_log.png)
+> 修改docker-compose.yml以共享传输文件
 >
 > **修改docker-compose.yml中的napcat volumes**
 >
@@ -96,9 +78,8 @@ JMComic（禁漫天堂）插件v0.1.1，定时或随机获取漫画，在QQ随�
 
 请设置：
 
-1. Napcat地址、端口、认证Token
-2. 权限名单及类型
-3. 解压密码
+1. 权限名单及类型
+2. 解压密码
 
 更多配置请看config.toml中的注释
 
