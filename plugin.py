@@ -202,7 +202,7 @@ async def download_and_process_comic(comic_input, tag: str = None) -> Tuple[bool
                 else:
                     page: JmCategoryPage = client.categories_filter(
                         page=random.randint(1, 3),
-                        time=JmMagicConstants.TIME_WEEK,
+                        time=JmMagicConstants.TIME_MONTH,
                         category=JmMagicConstants.CATEGORY_ALL,
                         order_by=JmMagicConstants.ORDER_BY_VIEW,
                     )
