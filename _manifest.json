@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "jmcomic插件 - 简单漫画下载",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "description": "jmcomic插件，定时或随机获取漫画，随时观看和分享喜欢的漫画",
   "author": {
     "name": "internetsb",
@@ -10,8 +10,7 @@
   "license": "MIT",
   
   "host_application": {
-    "min_version": "0.8.0",
-	"max_version": "0.10.3"
+    "min_version": "0.8.0"
   },
   "homepage_url": "https://github.com/internetsb/jmcomic_plugin",
   "repository_url": "https://github.com/internetsb/jmcomic_plugin",
