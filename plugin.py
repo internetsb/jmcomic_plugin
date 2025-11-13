@@ -49,7 +49,8 @@ class DownloadManager:
     """下载管理器，确保同一时刻只能下载一本漫画"""
 
     @staticmethod
-    async def download_comic(comic_input: str, tag: Optional[str] = None) -> Tuple[bool, Any, Optional[JmAlbumDetail]]:
+    async def download_comic(comic_input: str, tags: Optional[List[str]] = None) -> Tuple[
+        bool, Any, Optional[JmAlbumDetail]]:
         """
         下载漫画主逻辑，使用全局锁确保同一时刻只能有一个下载任务
 
@@ -65,12 +66,13 @@ class DownloadManager:
         async with DOWNLOAD_LOCK:
             try:
                 CURRENT_DOWNLOADING = comic_input
-                return await DownloadManager._execute_download(comic_input, tag)
+                return await DownloadManager._execute_download(comic_input, tags)
             finally:
                 CURRENT_DOWNLOADING = None
 
     @staticmethod
-    async def _execute_download(comic_input: str, tag: Optional[str]) -> Tuple[bool, Any, Optional[JmAlbumDetail]]:
+    async def _execute_download(comic_input: str, tags: Optional[List[str]]) -> Tuple[
+        bool, Any, Optional[JmAlbumDetail]]:
         """执行下载逻辑"""
         try:
             option = get_option()
@@ -79,9 +81,9 @@ class DownloadManager:
 
             # 解析漫画ID
             if comic_input == "random":
-                comic_id = await DownloadManager._get_random_comic_id(client, tag)
+                comic_id = await DownloadManager._get_random_comic_id(client, tags)
                 if not comic_id:
-                    error_msg = f"未找到包含标签 '{tag}' 的漫画" if tag else "未找到随机漫画"
+                    error_msg = f"未找到包含标签 '{', '.join(tags)}' 的漫画" if tags else "未找到随机漫画"
                     return False, error_msg, None
 
             # 检查是否已存在
@@ -103,13 +105,15 @@ class DownloadManager:
             return False, error_msg, None
 
     @staticmethod
-    async def _get_random_comic_id(client, tag: Optional[str]) -> Optional[int]:
+    async def _get_random_comic_id(client, tags: Optional[List[str]]) -> Optional[int]:
         """获取随机漫画ID"""
         try:
-            if tag:
+            if tags:
                 aid_list = []
                 for page_num in range(1, 5):
-                    page: JmSearchPage = client.search_site(search_query=f'+{tag}', page=page_num)
+                    # 构建多标签搜索查询
+                    search_query = ' '.join([f'+{tag}' for tag in tags])
+                    page: JmSearchPage = client.search_site(search_query=search_query, page=page_num)
                     aid_list.extend(list(page.iter_id()))
             else:
                 page = client.categories_filter(
@@ -364,7 +368,7 @@ class ScheduleSender:
     async def _schedule_loop(self):
         """定时发送循环"""
         time_table = self.plugin.get_config("schedule.time", ["23:00"])
-        tag = self.plugin.get_config("schedule.tag", "")
+        tags = self.plugin.get_config("schedule.tags", [])
         target_groups = self.plugin.get_config("schedule.target_group", [])
         target_users = self.plugin.get_config("schedule.target_user", [])
 
@@ -378,7 +382,7 @@ class ScheduleSender:
                 current_time = datetime.datetime.now().strftime("%H:%M")
 
                 if current_time in time_table:
-                    await self._execute_schedule_task(tag, target_groups, target_users)
+                    await self._execute_schedule_task(tags, target_groups, target_users)
                     await asyncio.sleep(PluginConfig.SCHEDULE_COOLDOWN)
 
                 await asyncio.sleep(PluginConfig.SCHEDULE_CHECK_INTERVAL)
@@ -389,12 +393,12 @@ class ScheduleSender:
                 logger.error(f"定时任务循环异常: {e}")
                 await asyncio.sleep(PluginConfig.SCHEDULE_CHECK_INTERVAL)
 
-    async def _execute_schedule_task(self, tag: str, target_groups: list, target_users: list):
+    async def _execute_schedule_task(self, tags: List[str], target_groups: list, target_users: list):
         """执行定时任务"""
         logger.info("开始执行定时漫画推荐任务")
 
         # 下载漫画（使用下载管理器确保互斥）
-        success, comic_id, album_details = await DownloadManager.download_comic("random", tag)
+        success, comic_id, album_details = await DownloadManager.download_comic("random", tags)
         if not success:
             logger.error(f"定时任务下载失败: {comic_id}")
             return
@@ -448,21 +452,23 @@ class JMComicCommand(BaseCommand):
 
     command_name = "jm"
     command_description = "根据指令下载漫画"
-    command_pattern = r"^/jm\s+(?P<arg1>\S+)(?:\s+tag=(?P<tag>\S+))?$"
+    command_pattern = r"^/jm\s+(?P<arg1>\S+)(?:\s+tags=(?P<tags>[^,]+(?:,[^,]+)*))?$"
     command_help = """
 ====================
-用法: /jm <漫画ID|random|help> [tag=<分类>]
+用法: /jm <漫画ID|random|help> [tags=分类1,分类2,...]
 ====================
 示例:
 /jm 350234 # 下载指定ID的漫画
 /jm random # 下载随机漫画
-/jm random tag=全彩 # 下载全彩的随机漫画
+/jm random tags=全彩 # 下载全彩的随机漫画
+/jm random tags=全彩,汉化 # 下载同时包含全彩和汉化标签的随机漫画
 """
     command_examples = [
         "/jm help",
         "/jm 350234",
         "/jm random",
-        "/jm random tag=全彩"
+        "/jm random tags=全彩",
+        "/jm random tags=全彩,汉化"
     ]
     intercept_message = True
 
@@ -491,7 +497,12 @@ class JMComicCommand(BaseCommand):
 
         # 参数解析
         arg1 = self.matched_groups.get("arg1")
-        tag = self.matched_groups.get("tag")
+        tags_str = self.matched_groups.get("tags")
+
+        # 解析tags参数
+        tags = []
+        if tags_str:
+            tags = [tag.strip() for tag in tags_str.split(',')]
 
         # 帮助命令
         if arg1 is None or arg1.lower() == "help":
@@ -504,12 +515,13 @@ class JMComicCommand(BaseCommand):
             comic_id = int(arg1)
             logger.info(f"用户 {user_id} 请求下载漫画 {comic_id}")
             await self.send_text(f"开始下载漫画ID {comic_id} ...")
-            success, result, album_details = await DownloadManager.download_comic(comic_id, tag)
+            success, result, album_details = await DownloadManager.download_comic(comic_id, tags)
 
         elif arg1.lower() == "random":
-            logger.info(f"用户 {user_id} 请求下载随机漫画 tag={tag}")
-            await self.send_text(f"开始下载'{tag if tag else '随机'}'漫画 ...")
-            success, result, album_details = await DownloadManager.download_comic("random", tag)
+            logger.info(f"用户 {user_id} 请求下载随机漫画 tags={tags}")
+            tag_display = ', '.join(tags) if tags else '随机'
+            await self.send_text(f"开始下载'{tag_display}'漫画 ...")
+            success, result, album_details = await DownloadManager.download_comic("random", tags)
             if success:
                 comic_id = result
         else:
@@ -596,7 +608,7 @@ class JMComicPlugin(BasePlugin):
         "schedule": {
             "enable": ConfigField(type=bool, default=False, description="是否启用每日推荐"),
             "time": ConfigField(type=list, default=["23:00"], description="每日推荐时间列表，格式HH:MM"),
-            "tag": ConfigField(type=str, default="", description="推荐漫画的关键词，留空则随机"),
+            "tags": ConfigField(type=list, default=[], description="推荐漫画的关键词列表，留空则随机"),
             "target_group": ConfigField(type=list, default=[], description="发送QQ群列表，用引号包括群号，逗号分隔"),
             "target_user": ConfigField(type=list, default=[], description="发送目标QQ列表，用引号包括QQ号，逗号分隔"),
         }
