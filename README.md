@@ -24,7 +24,7 @@ JMComic（禁漫天堂）插件v0.2.2，定时或随机获取漫画，在QQ随�
 
 - **随机漫画下载**：匹配`/jm random`命令，下载周榜随机漫画并获取简介
 
-- **分类搜索**：匹配`/jm random tag=<tag>`命令，下载标签含tag的随机漫画并获取简介
+- **分类搜索**：匹配`/jm random tags=<tag>[,<tag>...]`命令，下载标签含tag的随机漫画并获取简介
 
 - **权限管理**：在配置中规定谁可以使用本指令，避免恶意攻击
 
@@ -98,3 +98,4 @@ JMComic（禁漫天堂）插件v0.2.2，定时或随机获取漫画，在QQ随�
 [MaiBot](https://github.com/MaiM-with-u/MaiBot)
 
 原仓库：[JMComic-Crawler-Python](https://github.com/hect0x7/JMComic-Crawler-Python)
+
