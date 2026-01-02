@@ -40,11 +40,10 @@ download:
 log: true
 # log：jmcomic模块的日志输出
 plugins:
-   # after_init:
-     # - plugin: login  # 登录插件：部分本子登录才能访问，启用请解注释
-       # kwargs:
-         # username: un # 用户名
-         # password: pw # 密码
-
+  after_init:
+    # - plugin: login  # 登录插件：部分本子登录才能访问，启用请解注释
+    #   kwargs:
+    #     username: un # 用户名
+    #     password: pw # 密码
   valid: log
 version: '2.1'

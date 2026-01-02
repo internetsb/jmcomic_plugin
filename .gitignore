@@ -1,3 +1,5 @@
 albums/
 config.toml
 __pycache__/
+.idea/
+test/

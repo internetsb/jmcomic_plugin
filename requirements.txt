@@ -1,4 +1,6 @@
 jmcomic
 pyzipper
+reportlab
+PyPDF2
 asyncio
 httpx

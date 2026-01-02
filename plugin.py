@@ -3,6 +3,7 @@ import random
 import datetime
 import shutil
 import os
+import re
 from pathlib import Path
 from typing import Tuple, Optional, Any, List, Type
 
@@ -39,9 +40,12 @@ class PluginConfig:
     SCHEDULE_COOLDOWN = 61
 
     DEFAULT_ENCRYPT = "jmcomic"
+    DEFAULT_ENABLE_PDF = True
     DEFAULT_CLEAR_DIR = True
     DEFAULT_CLEAR_ZIP = True
+    DEFAULT_CLEAR_PDF = True
     DEFAULT_PERMISSION_TYPE = "whitelist"
+    DEFAULT_GROUP_PERMISSION_TYPE = "whitelist"
 
 
 # ================== 核心功能类 ==================
@@ -157,25 +161,256 @@ class DownloadManager:
             )
             return True, comic_id, album_details
         except asyncio.TimeoutError:
-            await ResourceManager.cleanup_files(comic_id, True, True)
+            await ResourceManager.cleanup_files(comic_id)
             raise
         except Exception as e:
-            await ResourceManager.cleanup_files(comic_id, True, True)
+            await ResourceManager.cleanup_files(comic_id)
             raise
 
-
+class PdfManager:
+    """PDF 管理器 - 自动加密，使用与压缩包相同的密码"""
+    
+    @staticmethod
+    async def create_encrypted_pdf(comic_id: int, password: str) -> Tuple[bool, Optional[Path]]:
+        """
+        创建加密PDF文件
+        
+        Args:
+            comic_id: 漫画ID
+            password: 加密密码（与压缩包相同）
+            
+        Returns:
+            (成功标志, PDF文件路径)
+        """
+        try:
+            return await asyncio.to_thread(
+                PdfManager._sync_create_encrypted_pdf,
+                comic_id,
+                password
+            )
+        except Exception as e:
+            logger.error(f"创建加密PDF异常: {e}")
+            return False, None
+    
+    @staticmethod
+    def _sync_create_encrypted_pdf(comic_id: int, password: str) -> Tuple[bool, Optional[Path]]:
+        """同步创建加密PDF"""
+        try:
+            comic_dir = album_path / str(comic_id)
+            pdf_file = album_path / f"{comic_id}.pdf"
+            
+            # 检查漫画目录是否存在
+            if not comic_dir.exists() or not comic_dir.is_dir():
+                logger.error(f"漫画目录不存在: {comic_dir}")
+                return False, None
+            
+            # 检查是否已存在PDF文件
+            if pdf_file.exists():
+                logger.info(f"PDF文件已存在: {pdf_file}")
+                return True, pdf_file
+            
+            # 收集图片并创建PDF
+            image_files = PdfManager._collect_image_files(comic_dir)
+            if not image_files:
+                logger.warning(f"漫画目录中没有找到图片文件: {comic_dir}")
+                return False, None
+            
+            # 创建临时PDF文件
+            temp_pdf = album_path / f"{comic_id}_temp.pdf"
+            if not PdfManager._create_pdf_from_images(image_files, temp_pdf):
+                logger.error("创建临时PDF失败")
+                return False, None
+            
+            # 加密PDF
+            if not PdfManager._encrypt_pdf(temp_pdf, pdf_file, password):
+                logger.error("加密PDF失败")
+                # 清理临时文件
+                if temp_pdf.exists():
+                    temp_pdf.unlink()
+                return False, None
+            
+            # 清理临时文件
+            if temp_pdf.exists():
+                temp_pdf.unlink()
+            
+            logger.info(f"加密PDF创建成功: {pdf_file}")
+            return True, pdf_file
+            
+        except Exception as e:
+            logger.error(f"创建加密PDF失败: {e}")
+            # 清理可能残留的文件
+            for temp_file in [album_path / f"{comic_id}_temp.pdf", 
+                            album_path / f"{comic_id}.pdf"]:
+                if temp_file.exists():
+                    try:
+                        temp_file.unlink()
+                    except:
+                        pass
+            return False, None
+    
+    @staticmethod
+    def _encrypt_pdf(input_pdf: Path, output_pdf: Path, password: str) -> bool:
+        """加密PDF文件 - 使用AES-256算法，限制权限"""
+        try:
+            from PyPDF2 import PdfReader, PdfWriter
+            
+            # 读取原始PDF
+            reader = PdfReader(input_pdf)
+            writer = PdfWriter()
+            
+            # 复制所有页面
+            for page in reader.pages:
+                writer.add_page(page)
+            
+            # 复制文档信息
+            if reader.metadata:
+                writer.add_metadata(reader.metadata)
+            
+            # 加密PDF
+            writer.encrypt(
+                        user_password=password,
+                        owner_password=password
+                    )
+            
+            # 保存加密后的PDF
+            with open(output_pdf, 'wb') as output_file:
+                writer.write(output_file)
+            
+            logger.info(f"PDF加密成功: {output_pdf.name}")
+            
+            return True
+            
+        except ImportError as e:
+            logger.error(f"缺少PyPDF2库: {e}")
+            logger.error("请安装PyPDF2")
+            return False
+        except Exception as e:
+            logger.error(f"加密PDF失败: {e}")
+            return False
+    
+    @staticmethod
+    def _collect_image_files(comic_dir: Path) -> List[Path]:
+        """收集漫画目录中的所有图片文件（按章节和文件名排序）"""
+        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp'}
+        image_files = []
+        
+        # 首先按章节目录排序
+        chapter_dirs = sorted(
+            [d for d in comic_dir.iterdir() if d.is_dir()],
+            key=lambda x: PdfManager._natural_sort_key(x.name)
+        )
+        
+        # 如果没有子目录，直接搜索根目录
+        if not chapter_dirs:
+            for item in comic_dir.iterdir():
+                if item.is_file() and item.suffix.lower() in image_extensions:
+                    image_files.append(item)
+        else:
+            # 按章节顺序收集图片
+            for chapter_dir in chapter_dirs:
+                chapter_images = sorted(
+                    [f for f in chapter_dir.iterdir() if f.is_file() and f.suffix.lower() in image_extensions],
+                    key=lambda x: PdfManager._natural_sort_key(x.name)
+                )
+                image_files.extend(chapter_images)
+        
+        # 如果没有找到图片，尝试搜索所有子目录
+        if not image_files:
+            for file_path in comic_dir.rglob('*'):
+                if file_path.is_file() and file_path.suffix.lower() in image_extensions:
+                    image_files.append(file_path)
+            
+            # 按路径排序
+            image_files.sort(key=lambda x: PdfManager._natural_sort_key(str(x.relative_to(comic_dir))))
+        
+        logger.info(f"找到 {len(image_files)} 张图片文件")
+        return image_files
+    
+    @staticmethod
+    def _create_pdf_from_images(image_files: List[Path], pdf_file: Path) -> bool:
+        """将图片列表转换为PDF文件"""
+        try:
+            from reportlab.lib.pagesizes import letter
+            from reportlab.pdfgen import canvas
+            from PIL import Image
+            
+            if not image_files:
+                return False
+            
+            # 使用第一张图片确定页面大小
+            first_image = Image.open(image_files[0])
+            img_width, img_height = first_image.size
+            first_image.close()
+            
+            page_width, page_height = letter
+            scale_width = page_width / img_width
+            scale_height = page_height / img_height
+            scale = min(scale_width, scale_height) * 0.95  # 留5%边距
+            
+            scaled_width = img_width * scale
+            scaled_height = img_height * scale
+            
+            # 创建PDF
+            c = canvas.Canvas(str(pdf_file), pagesize=(scaled_width, scaled_height))
+            
+            for i, image_path in enumerate(image_files):
+                try:
+                    img = Image.open(image_path)
+                    
+                    # 转换为RGB模式
+                    if img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    
+                    # 保存为临时文件
+                    temp_path = pdf_file.parent / f"temp_{i}.jpg"
+                    img.save(temp_path, 'JPEG', quality=85)
+                    img.close()
+                    
+                    # 将图片添加到PDF
+                    c.drawImage(str(temp_path), 0, 0, width=scaled_width, height=scaled_height)
+                    c.showPage()
+                    
+                    # 删除临时文件
+                    temp_path.unlink(missing_ok=True)
+                    
+                except Exception as e:
+                    logger.error(f"处理图片失败 {image_path}: {e}")
+                    continue
+            
+            c.save()
+            logger.info(f"临时PDF创建成功: {pdf_file}")
+            return True
+            
+        except ImportError as e:
+            logger.error(f"缺少必要的库: {e}")
+            logger.info("请安装: pip install reportlab pillow")
+            return False
+        except Exception as e:
+            logger.error(f"创建PDF失败: {e}")
+            return False
+    
+    @staticmethod
+    def _natural_sort_key(s: str) -> List:
+        """自然排序键函数，用于按数字顺序排序文件名"""
+        return [int(text) if text.isdigit() else text.lower()
+                for text in re.split(r'(\d+)', s)]
+    
 class ResourceManager:
     """资源管理器"""
-
+    
     @staticmethod
-    async def cleanup_files(comic_id: int, clear_dir: bool = True, clear_zip: bool = True) -> bool:
+    async def cleanup_files(comic_id: int, clear_dir: bool = True, clear_zip: bool = True, clear_pdf: bool = True) -> bool:
         """清理漫画相关文件"""
         try:
             comic_dir = album_path / str(comic_id)
             zip_file = album_path / f"{comic_id}.zip"
-
+            pdf_file = album_path / f"{comic_id}.pdf"
+            temp_pdf_file = album_path / f"{comic_id}_temp.pdf"
+            
             def _cleanup():
                 success = True
+                
+                # 清理目录
                 if clear_dir and comic_dir.exists() and comic_dir.is_dir():
                     try:
                         shutil.rmtree(comic_dir, ignore_errors=True)
@@ -183,7 +418,8 @@ class ResourceManager:
                     except Exception as e:
                         logger.error(f"清理目录失败: {e}")
                         success = False
-
+                
+                # 清理压缩包
                 if clear_zip and zip_file.exists() and zip_file.is_file():
                     try:
                         zip_file.unlink()
@@ -191,14 +427,31 @@ class ResourceManager:
                     except Exception as e:
                         logger.error(f"清理压缩包失败: {e}")
                         success = False
-
+                
+                # 清理PDF文件
+                if clear_pdf and pdf_file.exists() and pdf_file.is_file():
+                    try:
+                        pdf_file.unlink()
+                        logger.debug(f"已清理PDF文件: {pdf_file}")
+                    except Exception as e:
+                        logger.error(f"清理PDF文件失败: {e}")
+                        success = False
+                
+                # 清理临时PDF文件
+                if temp_pdf_file.exists() and temp_pdf_file.is_file():
+                    try:
+                        temp_pdf_file.unlink()
+                        logger.debug(f"已清理临时PDF文件: {temp_pdf_file}")
+                    except Exception as e:
+                        logger.error(f"清理临时PDF文件失败: {e}")
+                        success = False
+                
                 return success
-
+            
             return await asyncio.to_thread(_cleanup)
         except Exception as e:
             logger.error(f"资源清理异常: {e}")
             return False
-
 
 class ZipManager:
     """压缩文件管理器"""
@@ -299,7 +552,9 @@ class MessageManager:
             description = getattr(album_details, "description", "")
 
             return f"""
-========== {name} ==========
+==========
+{name}
+==========
 简介：{description}
 标签: [{'、'.join(tags)}]
 """
@@ -405,25 +660,46 @@ class ScheduleSender:
 
         # 生成消息
         message_text = MessageManager.generate_album_message(album_details)
-
-        # 创建压缩包
+    # 获取PDF配置
+        enable_pdf = self.plugin.get_config("plugin.enable_pdf", PluginConfig.DEFAULT_ENABLE_PDF)
         encrypt = self.plugin.get_config("plugin.encrypt", PluginConfig.DEFAULT_ENCRYPT)
-        zip_success, zip_path = await ZipManager.create_encrypted_zip(comic_id, encrypt)
-        if not zip_success:
-            logger.error("定时任务创建压缩包失败")
-            await ResourceManager.cleanup_files(comic_id, True, False)
-            return
 
-        # 发送消息
-        await self._send_schedule_messages(message_text, zip_path.name, target_groups, target_users)
+        file_to_send = None
 
+        # 如果启用PDF，则尝试生成PDF
+        if enable_pdf:
+            pdf_success, pdf_path = await PdfManager.create_encrypted_pdf(comic_id, encrypt)
+            if pdf_success:
+                file_to_send = pdf_path
+                logger.info("定时任务PDF生成成功")
+            else:
+                logger.warning("定时任务PDF生成失败，将尝试生成压缩包")
+                # 如果PDF生成失败，则生成压缩包
+                zip_success, zip_path = await ZipManager.create_encrypted_zip(comic_id, encrypt)
+                if not zip_success:
+                    logger.error("定时任务创建压缩包失败")
+                    await ResourceManager.cleanup_files(comic_id)
+                    return
+                file_to_send = zip_path
+        else:
+            # 不启用PDF，则生成压缩包
+            zip_success, zip_path = await ZipManager.create_encrypted_zip(comic_id, encrypt)
+            if not zip_success:
+                logger.error("定时任务创建压缩包失败")
+                await ResourceManager.cleanup_files(comic_id)
+                return
+            file_to_send = zip_path
+
+        # 发送消息和文件
+        await self._send_schedule_messages(message_text, file_to_send.name, target_groups, target_users)
         # 清理文件
-        upload_time = await estimate_upload_time(zip_path)
+        upload_time = await estimate_upload_time(file_to_send)
         await asyncio.sleep(upload_time)
 
         clear_dir = self.plugin.get_config("plugin.clear_dir", PluginConfig.DEFAULT_CLEAR_DIR)
         clear_zip = self.plugin.get_config("plugin.clear_zip", PluginConfig.DEFAULT_CLEAR_ZIP)
-        await ResourceManager.cleanup_files(comic_id, clear_dir, clear_zip)
+        clear_pdf = self.plugin.get_config("plugin.clear_pdf", PluginConfig.DEFAULT_CLEAR_PDF)
+        await ResourceManager.cleanup_files(comic_id, clear_dir, clear_zip, clear_pdf)
 
     async def _send_schedule_messages(self, message: str, zip_filename: str, target_groups: list, target_users: list):
         """发送定时任务消息"""
@@ -472,11 +748,24 @@ class JMComicCommand(BaseCommand):
     ]
     intercept_message = True
 
-    def check_permission(self, qq_account: str) -> bool:
+    def check_permission(self, qq_account: str, group_account: str | None) -> bool:
         """检查用户权限"""
         permission_list = self.get_config("plugin.permission", [])
         permission_type = self.get_config("plugin.permission_type", PluginConfig.DEFAULT_PERMISSION_TYPE)
-
+        group_permission_list = self.get_config("plugin.group_permission", [])
+        group_permission_type = self.get_config("plugin.group_permission_type", PluginConfig.DEFAULT_GROUP_PERMISSION_TYPE)
+        if group_account is not None:
+            # 检查群组权限
+            if group_permission_type == 'whitelist':
+                if group_account not in group_permission_list:
+                    return False
+            elif group_permission_type == 'blacklist':
+                if group_account in group_permission_list:
+                    return False
+            else:
+                logger.error(f'无效的群组权限类型: {group_permission_type}')
+                return False
+        # 检查用户权限
         if permission_type == 'whitelist':
             return qq_account in permission_list
         elif permission_type == 'blacklist':
@@ -488,10 +777,11 @@ class JMComicCommand(BaseCommand):
     async def execute(self) -> tuple[bool, Optional[str], bool]:
         """命令执行入口"""
         user_id = self.message.message_info.user_info.user_id
+        group_id = self.message.message_info.group_info.group_id
 
         # 权限检查
-        if not self.check_permission(user_id):
-            logger.info(f"用户 {user_id} 无权限使用命令")
+        if not self.check_permission(user_id, group_id):
+            logger.info(f"用户 {user_id} 于 群组 {group_id} 无权限使用命令")
             await MessageManager.send_tease_message(self, "no_permission")
             return False, "权限不足", True
 
@@ -540,7 +830,37 @@ class JMComicCommand(BaseCommand):
         """处理下载成功后的流程"""
         # 发送漫画信息
         await self.send_text(MessageManager.generate_album_message(album_details))
+        # 创建加密PDF
+        if self.get_config("plugin.enable_pdf", PluginConfig.DEFAULT_ENABLE_PDF):
+            encrypt = self.get_config("plugin.encrypt", PluginConfig.DEFAULT_ENCRYPT)
+            
+            pdf_success, pdf_path = await PdfManager.create_encrypted_pdf(comic_id, encrypt)
+            
+            if pdf_success:
+                # 上传加密PDF
+                pdf_upload_success = await MessageManager.upload_file_to_stream(
+                    pdf_path.name, 
+                    self.message.chat_stream
+                )
+                
+                if pdf_upload_success:
+                    logger.info("PDF上传成功")
+                    await MessageManager.send_tease_message(self, "success")
+                    # 清理文件
+                    upload_time = await estimate_upload_time(pdf_path)
+                    await asyncio.sleep(upload_time)
 
+                    clear_dir = self.get_config("plugin.clear_dir", PluginConfig.DEFAULT_CLEAR_DIR)
+                    clear_zip = self.get_config("plugin.clear_zip", PluginConfig.DEFAULT_CLEAR_ZIP)
+                    clear_pdf = self.get_config("plugin.clear_pdf", PluginConfig.DEFAULT_CLEAR_PDF)
+                    await ResourceManager.cleanup_files(comic_id, clear_dir, clear_zip, clear_pdf)
+
+                    return True, 'success', True
+                else:
+                    logger.warning("PDF上传失败，继续处理压缩包")
+            else:
+                logger.warning("PDF生成失败，继续处理压缩包")
+        
         # 创建压缩包
         encrypt = self.get_config("plugin.encrypt", PluginConfig.DEFAULT_ENCRYPT)
         zip_success, zip_path = await ZipManager.create_encrypted_zip(comic_id, encrypt)
@@ -562,7 +882,8 @@ class JMComicCommand(BaseCommand):
 
         clear_dir = self.get_config("plugin.clear_dir", PluginConfig.DEFAULT_CLEAR_DIR)
         clear_zip = self.get_config("plugin.clear_zip", PluginConfig.DEFAULT_CLEAR_ZIP)
-        await ResourceManager.cleanup_files(comic_id, clear_dir, clear_zip)
+        clear_pdf = self.get_config("plugin.clear_pdf", PluginConfig.DEFAULT_CLEAR_PDF)
+        await ResourceManager.cleanup_files(comic_id, clear_dir, clear_zip, clear_pdf)
 
         return True, 'success', True
 
@@ -575,7 +896,7 @@ class JMComicPlugin(BasePlugin):
     plugin_name: str = "jmcomic"
     enable_plugin: bool = True
     dependencies: List[str] = []
-    python_dependencies: List[str] = ["jmcomic", "pyzipper", "httpx", "asyncio"]
+    python_dependencies: List[str] = ["jmcomic", "pyzipper", "reportlab","PyPDF2", "pillow", "httpx", "asyncio"]
     config_file_name: str = "config.toml"
 
     config_section_descriptions = {
@@ -588,13 +909,20 @@ class JMComicPlugin(BasePlugin):
         "plugin": {
             "enable": ConfigField(type=bool, default=True, description="是否启用插件"),
             "encrypt": ConfigField(type=str, default=PluginConfig.DEFAULT_ENCRYPT, description="解压密码"),
+            "enable_pdf": ConfigField(type=bool, default=PluginConfig.DEFAULT_ENABLE_PDF,
+                                     description="是否改为生成并发送PDF"),
             "clear_dir": ConfigField(type=bool, default=PluginConfig.DEFAULT_CLEAR_DIR,
                                      description="是否清理下载的漫画文件夹"),
             "clear_zip": ConfigField(type=bool, default=PluginConfig.DEFAULT_CLEAR_ZIP,
                                      description="是否清理上传后压缩包"),
+            "clear_pdf": ConfigField(type=bool, default=PluginConfig.DEFAULT_CLEAR_PDF,
+                                     description="是否清理生成的PDF"),
             "permission_type": ConfigField(type=str, default=PluginConfig.DEFAULT_PERMISSION_TYPE,
                                            description="权限类型，whitelist或blacklist"),
             "permission": ConfigField(type=list, default=["114514", "1919810"], description="权限QQ号列表"),
+            "group_permission_type": ConfigField(type=str, default=PluginConfig.DEFAULT_GROUP_PERMISSION_TYPE,
+                                                description="群权限类型，whitelist或blacklist"),
+            "group_permission": ConfigField(type=list, default=["114514","1919810"], description="群权限QQ号列表,优先级高于用户权限"),
         },
         "tease": {
             "success": ConfigField(type=list, default=["漫画到手喵~"], description="下载成功后发送的提醒"),

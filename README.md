@@ -10,24 +10,19 @@
 
 # JMComic（禁漫天堂） 插件
 
-<u>制作者水平稀烂，任何疑问或bug或建议请联系qq：1523640161</u>
+*制作者水平稀烂，任何疑问或bug或建议请联系qq：1523640161* 
 
 ## 概述
 
-JMComic（禁漫天堂）插件v0.2.2，定时或随机获取漫画，在QQ随时观看和分享喜欢的漫画
+JMComic（禁漫天堂）插件v0.3.0，定时或随机获取漫画，在QQ随时观看和与群友分享喜欢的漫画
 
 ## 功能
 
-- **使用说明**:  匹配`/jm help`命令，获取指令的使用说明
-
-- **根据ID下载**：匹配`/jm <漫画ID>`命令，下载指定漫画并获取简介
-
-- **随机漫画下载**：匹配`/jm random`命令，下载周榜随机漫画并获取简介
-
-- **分类搜索**：匹配`/jm random tags=<tag>[,<tag>...]`命令，下载标签含tag的随机漫画并获取简介
-
+- **使用说明**:  匹配 `/jm help`命令，获取指令的使用说明
+- **根据ID下载**：匹配 `/jm <漫画ID>`命令，下载指定漫画并获取简介
+- **随机漫画下载**：匹配 `/jm random`命令，下载周榜随机漫画并获取简介
+- **分类搜索**：匹配 `/jm random tags=<tag>[,<tag>...]`命令，下载标签含tag的随机漫画并获取简介
 - **权限管理**：在配置中规定谁可以使用本指令，避免恶意攻击
-
 - **定时发送**：开启此功能定时获取指定tag或随机漫画至群、用户
 
 ## 使用方法
@@ -39,26 +34,22 @@ JMComic（禁漫天堂）插件v0.2.2，定时或随机获取漫画，在QQ随�
    ```bash
    git clone https://github.com/internetsb/jmcomic_plugin.git
    ```
-
-2. 将`jmcomic_plugin\`文件夹放入`MaiBot\plugins`文件夹下
-
+2. 将 `jmcomic_plugin\`文件夹放入 `MaiBot\plugins`文件夹下
 3. 安装相应依赖(部分依赖MaiBot已安装)，示例：
 
    ```bash
+   #说明：reportlab与PyPDF2为可选项，仅在enable_pdf启用时需要
    #pip安装，在MaiBot文件夹下
    .\venv\Scripts\activate
    cd .\plugins\jmcomic_plugin\
    pip install -i https://mirrors.aliyun.com/pypi/simple -r .\requirements.txt --upgrade
    #uv安装，在plugins\jmcomic_plugin文件夹下
    uv pip install -r .\requirements.txt -i https://mirrors.aliyun.com/pypi/simple --upgrade
-   #一键包用户可在启动时选择交互式安装pip模块，安装jmcomic和pyzipper
+   #一键包用户可在启动时选择交互式安装pip模块，安装jmcomic，pyzipper，reportlab，PyPDF2
    #docker安装，宿主机内
-   docker exec -it maim-bot-core uv pip install jmcomic pyzipper --system
+   docker exec -it maim-bot-core uv pip install jmcomic pyzipper reportlab PyPDF2 --system
    ```
-
-4. 启动一次麦麦自动生成`config.toml`配置文件，成功生成配置文件即说明读取插件成功（未生成配置文件请检查启动麦麦时的加载插件日志）
-
-
+4. 启动一次麦麦自动生成 `config.toml`配置文件，成功生成配置文件即说明读取插件成功（未生成配置文件请检查启动麦麦时的加载插件日志）
 
 > [!IMPORTANT]
 >
@@ -85,17 +76,16 @@ JMComic（禁漫天堂）插件v0.2.2，定时或随机获取漫画，在QQ随�
 
 ### （可选）高级配置
 
-查看插件目录下的option.yml文件，配置参考注释及原项目指南-[配置文件详解](https://github.com/hect0x7/JMComic-Crawler-Python/blob/master/assets/docs/sources/option_file_syntax.md)
+查看插件目录下的option.yml文件，可修改下载流量等配置，参考注释及原项目指南-[配置文件详解](https://github.com/hect0x7/JMComic-Crawler-Python/blob/master/assets/docs/sources/option_file_syntax.md)
 
 ### 快速开始
 
 **配置权限**：在config.toml中填写权限名单及类型
 
-**发送命令**：向麦麦发送命令：`/jm 350234`  正常情况下，等待几秒后麦麦将上传文件压缩包、发送提醒及漫画简介
+**发送命令**：向麦麦发送命令：`/jm 350234`  正常情况下，等待几秒后麦麦将上传文件压缩包或pdf、发送提醒及漫画简介
 
 ## 鸣谢
 
 [MaiBot](https://github.com/MaiM-with-u/MaiBot)
 
 原仓库：[JMComic-Crawler-Python](https://github.com/hect0x7/JMComic-Crawler-Python)
-
