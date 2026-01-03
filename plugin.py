@@ -777,8 +777,10 @@ class JMComicCommand(BaseCommand):
     async def execute(self) -> tuple[bool, Optional[str], bool]:
         """命令执行入口"""
         user_id = self.message.message_info.user_info.user_id
-        group_id = self.message.message_info.group_info.group_id
-
+        try:
+            group_id = self.message.message_info.group_info.group_id
+        except AttributeError:
+            group_id = None
         # 权限检查
         if not self.check_permission(user_id, group_id):
             logger.info(f"用户 {user_id} 于 群组 {group_id} 无权限使用命令")
