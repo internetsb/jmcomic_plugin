@@ -8,18 +8,24 @@
     "url": "https://github.com/internetsb"
   },
   "license": "MIT",
-  
   "host_application": {
     "min_version": "0.8.0"
   },
   "homepage_url": "https://github.com/internetsb/jmcomic_plugin",
   "repository_url": "https://github.com/internetsb/jmcomic_plugin",
-  "keywords": ["jm", "jmcomic", "漫画", "推荐", "下载"],
-  "categories": ["Utility Tools", "External Integration"],
-  
+  "keywords": [
+    "jm",
+    "jmcomic",
+    "漫画",
+    "推荐",
+    "下载"
+  ],
+  "categories": [
+    "Utility Tools",
+    "External Integration"
+  ],
   "default_locale": "zh-CN",
   "locales_path": "_locales",
-  
   "plugin_info": {
     "is_built_in": false,
     "plugin_type": "example",
@@ -30,5 +36,6 @@
         "description": "下载漫画指令"
       }
     ]
-  }
+  },
+  "id": "internetsb.jmcomic_plugin"
 }
