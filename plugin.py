@@ -337,25 +337,27 @@ class PdfManager:
             if not image_files:
                 return False
             
-            # 使用第一张图片确定页面大小
-            first_image = Image.open(image_files[0])
-            img_width, img_height = first_image.size
-            first_image.close()
-            
             page_width, page_height = letter
-            scale_width = page_width / img_width
-            scale_height = page_height / img_height
-            scale = min(scale_width, scale_height) * 0.95  # 留5%边距
             
-            scaled_width = img_width * scale
-            scaled_height = img_height * scale
-            
-            # 创建PDF
-            c = canvas.Canvas(str(pdf_file), pagesize=(scaled_width, scaled_height))
+            # 创建PDF，使用标准A4页面大小
+            c = canvas.Canvas(str(pdf_file), pagesize=(page_width, page_height))
             
             for i, image_path in enumerate(image_files):
                 try:
                     img = Image.open(image_path)
+                    img_w, img_h = img.size
+                    
+                    # 为每张图片单独计算合适的缩放比例，保持长宽比
+                    img_scale_width = page_width / img_w
+                    img_scale_height = page_height / img_h
+                    img_scale = min(img_scale_width, img_scale_height) * 0.95  # 留5%边距
+                    
+                    scaled_width = img_w * img_scale
+                    scaled_height = img_h * img_scale
+                    
+                    # 计算居中位置
+                    x_offset = (page_width - scaled_width) / 2
+                    y_offset = (page_height - scaled_height) / 2
                     
                     # 转换为RGB模式
                     if img.mode != 'RGB':
@@ -366,8 +368,8 @@ class PdfManager:
                     img.save(temp_path, 'JPEG', quality=85)
                     img.close()
                     
-                    # 将图片添加到PDF
-                    c.drawImage(str(temp_path), 0, 0, width=scaled_width, height=scaled_height)
+                    # 将图片添加到PDF（居中显示）
+                    c.drawImage(str(temp_path), x_offset, y_offset, width=scaled_width, height=scaled_height)
                     c.showPage()
                     
                     # 删除临时文件
